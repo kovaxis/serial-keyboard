@@ -13,7 +13,9 @@ use std::fmt;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use std::time::{Duration};
+use std::time::Duration;
+
+const MAGIC_NUMBER: &[u8] = b"SerKey01";
 
 type Result<T> = ::std::result::Result<T, Box<Error>>;
 #[derive(Debug)]
@@ -177,7 +179,8 @@ impl Connection {
 
         //Create and init connection
         let mut conn = Connection { serial };
-        conn.initialize(cfg).chain("failed to initialize connection")?;
+        conn.initialize(cfg)
+            .chain("failed to initialize connection")?;
         Ok(conn)
     }
 
@@ -185,14 +188,21 @@ impl Connection {
     fn initialize(&mut self, cfg: &Config) -> Result<()> {
         //Check magic number
         let mut magic_buf = [0; 8];
-        self.serial.read_exact(&mut magic_buf)?;
-        if &magic_buf != b"SERKEYv1" {
-            return Err("device is not a valid v1 serial keyboard".into());
+        self.serial
+            .read_exact(&mut magic_buf)
+            .chain("failed to read magic number")?;
+        if &magic_buf != MAGIC_NUMBER {
+            return Err(format!(
+                "device is not a valid {} connection",
+                ::std::str::from_utf8(MAGIC_NUMBER).unwrap()
+            ).into());
         }
         println!("magic number matches");
         //Check key count
         let mut key_count = [0];
-        self.serial.read_exact(&mut key_count)?;
+        self.serial
+            .read_exact(&mut key_count)
+            .chain("failed to read keycount")?;
         let key_count = key_count[0] as usize;
         if key_count > cfg.mapping.len() {
             println!(
@@ -205,7 +215,9 @@ impl Connection {
                 cfg.mapping.len() - key_count
             );
         }
-        println!("mapping {} keys",usize::min(key_count,cfg.mapping.len()));
+        println!("mapping {} keys", usize::min(key_count, cfg.mapping.len()));
+        //Set an infinite timeout
+        self.serial.set_timeout(Duration::from_millis(0))?;
         //All ok
         Ok(())
     }
@@ -225,6 +237,9 @@ enum Event {
 impl Event {
     fn key_update(key_idx: u8, state: u8) -> Event {
         if state != 0 {
+            if state != 1 {
+                println!("nonstandard state {} (expected 0 or 1)", state)
+            }
             Event::KeyDown(key_idx)
         } else {
             Event::KeyUp(key_idx)
