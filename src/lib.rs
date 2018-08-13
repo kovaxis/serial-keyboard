@@ -175,7 +175,7 @@ impl Connection {
                 timeout: Duration::from_millis(1000),
                 ..Default::default()
             },
-        ).chain("failed to open serial port")?;
+        ).chain("failed to open serial port, ensure device is connected and the correct port is being used")?;
 
         //Create and init connection
         let mut conn = Connection { serial };
@@ -193,7 +193,7 @@ impl Connection {
             .chain("failed to read magic number")?;
         if &magic_buf != MAGIC_NUMBER {
             return Err(format!(
-                "device is not a valid {} connection",
+                "magic number mismatch: not a valid {} connection",
                 ::std::str::from_utf8(MAGIC_NUMBER).unwrap()
             ).into());
         }
