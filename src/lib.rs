@@ -256,16 +256,21 @@ impl Connection {
         Ok(conn)
     }
 
-    fn read_magic(&mut self, _cfg: &Config) -> Result<()> {
+    fn read_magic(&mut self, cfg: &Config) -> Result<()> {
         let mut magic_idx = 0;
         let mut garbage = 0;
+        if cfg.verbose {
+            print!("reading magic number: '");
+        }
         while magic_idx < MAGIC_NUMBER.len() {
             let mut byte = [0; 1];
             self.serial
                 .read(&mut byte)
                 .chain("reading magic number failed")?;
             let byte = byte[0];
-            print!("{}", byte as char);
+            if cfg.verbose {
+                print!("{}", byte as char);
+            }
             if byte == MAGIC_NUMBER[magic_idx] {
                 magic_idx += 1;
             } else {
@@ -273,7 +278,9 @@ impl Connection {
                 magic_idx = 0;
             }
         }
-        println!();
+        if cfg.verbose {
+            println!("'");
+        }
         println!("received magic number after {} bytes of garbage", garbage);
         Ok(())
     }
@@ -432,6 +439,9 @@ impl Event {
 pub fn run() -> Result<()> {
     //Read configuration files
     let config = Config::create("config.txt");
+    if config.verbose {
+        println!("being verbose");
+    }
 
     //Run previous command if setup
     if let Some(ref cmd) = config.previous_command {
