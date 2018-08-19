@@ -120,6 +120,10 @@ struct Config {
     pub debounce_type: DebounceType,
     ///Whether the device should listen to interrupts.
     pub enable_interrupts: bool,
+    ///How long to wait for the device to respond.
+    pub timeout_ms: u64,
+    ///Print all sorts of stuff.
+    pub verbose: bool,
 }
 impl Default for Config {
     fn default() -> Config {
@@ -135,6 +139,8 @@ impl Default for Config {
             debounce_ms: 1.0,
             debounce_type: DebounceType::LastChange,
             enable_interrupts: false,
+            timeout_ms: 3000,
+            verbose: false,
         }
     }
 }
@@ -238,7 +244,7 @@ impl Connection {
             &portname,
             &SerialPortSettings {
                 baud_rate: cfg.baud_rate,
-                timeout: Duration::from_millis(1000),
+                timeout: Duration::from_millis(cfg.timeout_ms),
                 ..Default::default()
             },
         ).chain("failed to open serial port, ensure device is connected and the correct port is being used")?;
@@ -365,9 +371,12 @@ impl Connection {
     }
 
     ///Block until an event is read.
-    fn read_event(&mut self) -> Result<Event> {
+    fn read_event(&mut self,cfg: &Config) -> Result<Event> {
         let mut event = [0; 1];
         self.serial.read_exact(&mut event)?;
+        if cfg.verbose {
+            println!("received event byte 0x{:X}",event[0]);
+        }
         Ok(Event::from_raw(event[0]))
     }
 }
@@ -394,9 +403,10 @@ impl Event {
         }
 
         //Key state change helper
-        fn key_change(cfg: &Config, idx: u8, func: fn(&mut Enigo, enigo::Key)) {
+        fn key_change<F: FnMut(&mut Enigo,enigo::Key)>(cfg: &Config, idx: u8, mut func: F) {
             cfg.key_maps.get(idx as usize).and_then(|keymap| {
                 ENIGO.with(|enigo| for keycode in keymap.keycodes.iter() {
+                    println!("updating physical keycode {}",keycode);
                     func(&mut *enigo.borrow_mut(), enigo::Key::Raw(*keycode))
                 });
                 Some(())
@@ -406,9 +416,11 @@ impl Event {
         //Check event type and act accordingly
         match self {
             Event::KeyDown(idx) => {
+                println!("pressing virtual key {}",idx);
                 key_change(cfg, idx, Enigo::key_down);
             }
             Event::KeyUp(idx) => {
+                println!("releasing virtual key {}",idx);
                 key_change(cfg, idx, Enigo::key_up);
             }
         }
@@ -443,7 +455,7 @@ pub fn run() -> Result<()> {
     let mut conn = Connection::open(&config).chain("failed to open connection")?;
     println!("handling device events");
     loop {
-        conn.read_event()
+        conn.read_event(&config)
             .chain("failed to read event from device")?
             .consume(&config)
             .chain("failed to execute device event")?;
