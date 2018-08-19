@@ -1,5 +1,0 @@
-{
-  "serial_port": "COM3",
-  "baud_rate": 115200,
-  "mapping": []
-}
