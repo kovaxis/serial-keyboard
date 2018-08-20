@@ -8,6 +8,8 @@ extern crate subprocess;
 
 use prelude::*;
 use subprocess::{Exec};
+use std::thread;
+use std::time::{Duration};
 
 use config::{Config};
 use connection::{Connection};
@@ -90,6 +92,7 @@ pub fn run() -> Result<()> {
             },
         }
         println!();
+        thread::sleep(Duration::from_millis(2000));
     }
 
     //Open and handle connection
