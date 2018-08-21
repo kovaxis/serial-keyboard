@@ -1,6 +1,7 @@
 
 v0.1.2
-+ Sleep in-between previous command and connection start
++ Configurable sleep in-between command-at-start and connection start
+* Fixed arduino-side timer overflow after ~71 minutes which made the keyboard unusable until a reset
 
 v0.1.1
 + Configurable timeout

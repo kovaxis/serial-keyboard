@@ -77,22 +77,25 @@ pub fn run() -> Result<()> {
     }
 
     //Run previous command if setup
-    if let Some(ref cmd) = config.previous_command {
-        let cmd=cmd.replace("{{port}}",&config.resolve_port().unwrap_or_else(|_| config.serial_port.clone()));
-        println!("running setup previous command: {}",cmd);
-        match Exec::shell(&cmd).join() {
-            Ok(ref status) if status.success() => {
-                println!("successfully ran previous command");
-            },
-            Ok(status) => {
-                eprintln!("error running previous command, exit status {:?}",status);
-            },
-            Err(err) => {
-                eprintln!("failed to run previous command: {}",err);
-            },
+    if let Some(ref cmd) = config.command_at_start {
+        for cmd in cmd.commands.iter() {
+            let cmd=cmd.replace("{{port}}",&config.resolve_port().unwrap_or_else(|_| config.serial_port.clone()));
+            println!("running command-at-start: {}",cmd);
+            match Exec::shell(&cmd).join() {
+                Ok(ref status) if status.success() => {
+                    println!("successfully ran command-at-start");
+                },
+                Ok(status) => {
+                    eprintln!("error running command-at-start, exit status {:?}",status);
+                },
+                Err(err) => {
+                    eprintln!("failed to run command-at-start: {}",err);
+                },
+            }
         }
+        println!("sleeping for {} seconds",cmd.sleep_secs);
+        thread::sleep(Duration::from_micros((cmd.sleep_secs*1000_000.0) as u64));
         println!();
-        thread::sleep(Duration::from_millis(2000));
     }
 
     //Open and handle connection

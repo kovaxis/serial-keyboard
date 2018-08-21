@@ -55,7 +55,7 @@ void Key_setup(State* state,int pin) {
   if (state->key_count<MAX_KEYS) {
     //Set key properties
     Key* key = &state->keys[state->key_count];
-    Key_init(key,pin);
+    key->init(pin);
     //Log info
     Serial.print("added key ");
     Serial.print(state->key_count);
@@ -82,7 +82,7 @@ void Key_tick(State* state) {
     Key* key = &state->keys[i];
     bool is_down = digitalRead(key->pin)==LOW;
     if (key->was_down!=is_down) {
-      bool debounce = micros() < key->next_update;
+      bool debounce = key->debounce_timer.check_now();
       //Notify host of the key state change only if debounce timer does not deny it
       if (!debounce) {
         //Send an event byte in the format `siii_iiii`, where `s` is the state bit and `i` is the index 7-bit unsigned key index
@@ -92,7 +92,7 @@ void Key_tick(State* state) {
       }
       //Update debounce timer if this message is in itself not debounced or 'await_smoothness' is enabled
       if (state->await_smoothness || !debounce) {
-        key->next_update = micros()+state->debounce_micros;
+        key->debounce_timer.set( micros()+state->debounce_micros);
       }
     }
   }
@@ -111,7 +111,7 @@ unsigned char next_serial_byte() {
 }
 
 void State_run(State* state) {
-  State_init(state);
+  state->init();
 
   //Read magic number from serial stream
   int magic_idx=0;

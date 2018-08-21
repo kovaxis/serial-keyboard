@@ -20,6 +20,12 @@ pub enum DebounceType {
     LastChange,
 }
 
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+pub struct CommandAtStart {
+    pub commands: Vec<String>,
+    pub sleep_secs: f32,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     ///What serial port to use to connect to the device.
@@ -27,7 +33,7 @@ pub struct Config {
     ///A command-line command to run before proceeding to attempt the connection.
     ///Used to program the device with a suitable server before connecting.
     ///The keyword `{{port}}` will be replaced for the setup port.
-    pub previous_command: Option<String>,
+    pub command_at_start: Option<CommandAtStart>,
     ///How many bits per second to communicate through.
     pub baud_rate: u32,
     ///Keys to map.
@@ -47,7 +53,7 @@ impl Default for Config {
     fn default() -> Config {
         //Create default config
         Config {
-            previous_command: None,
+            command_at_start: None,
             serial_port: ":auto-usb-arduino".into(),
             baud_rate: 115200,
             key_maps: vec![KeyMap {
