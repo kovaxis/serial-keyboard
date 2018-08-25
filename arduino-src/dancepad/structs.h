@@ -24,7 +24,7 @@ void Timer::set(unsigned long deadline) {
 }
 //Checks whether the timer has expired, handling overflow as best as possible.
 bool Timer::check(unsigned long now) {
-  bool expired = this->enabled && (signed long)(now-this->timeout)>=0;
+  bool expired = !this->enabled || ((signed long)(now-this->timeout))>=0;
   if (expired) {
     this->enabled=false;
   }

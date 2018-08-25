@@ -71,9 +71,9 @@ void Key_setup(State* state,int pin) {
 //Check all keys for state changes
 void Key_tick(State* state) {
   //Synchronize
-  static volatile unsigned long min_tick_time = 0;
+  static volatile Timer block_ticks;
   noInterrupts();
-  if (micros()<min_tick_time) {
+  if (!block_ticks.check_now()) {
     interrupts();
     return;
   }
@@ -82,7 +82,7 @@ void Key_tick(State* state) {
     Key* key = &state->keys[i];
     bool is_down = digitalRead(key->pin)==LOW;
     if (key->was_down!=is_down) {
-      bool debounce = key->debounce_timer.check_now();
+      bool debounce = !key->debounce_timer.check_now();
       //Notify host of the key state change only if debounce timer does not deny it
       if (!debounce) {
         //Send an event byte in the format `siii_iiii`, where `s` is the state bit and `i` is the index 7-bit unsigned key index
@@ -97,7 +97,7 @@ void Key_tick(State* state) {
     }
   }
   //Resume
-  min_tick_time=micros()+50;
+  block_ticks.set(micros()+50);
   interrupts();
 }
 
